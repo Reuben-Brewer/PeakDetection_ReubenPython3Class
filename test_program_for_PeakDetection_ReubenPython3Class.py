@@ -6,12 +6,20 @@ reuben.brewer@gmail.com
 www.reubotics.com
 
 Apache 2 License
-Software Revision B, 06/15/2025
+Software Revision C, 01/03/2026
 
-Verified working on: Python 3.11/3.12 for Windows 10/11 64-bit and Raspberry Pi Bookworm.
+Verified working on: Python 3.11/12/13 for Windows 10/11 64-bit and Raspberry Pi Bookworm.
 '''
 
 __author__ = 'reuben.brewer'
+
+##########################################################################################################
+##########################################################################################################
+
+###########################################################
+import ReubenGithubCodeModulePaths #Replaces the need to have "ReubenGithubCodeModulePaths.pth" within "C:\Anaconda3\Lib\site-packages".
+ReubenGithubCodeModulePaths.Enable()
+###########################################################
 
 ###########################################################
 from CSVdataLogger_ReubenPython3Class import *
@@ -29,6 +37,9 @@ import time
 import datetime
 import threading
 import collections
+import traceback
+import numpy
+import math
 import keyboard
 
 from tkinter import *
@@ -55,6 +66,9 @@ if platform.system() == "Windows":
     winmm = ctypes.WinDLL('winmm')
     winmm.timeBeginPeriod(1) #Set minimum timer resolution to 1ms so that time.sleep(0.001) behaves properly.
 ###########################################################
+
+##########################################################################################################
+##########################################################################################################
 
 ##########################################################################################################
 ##########################################################################################################
@@ -183,14 +197,14 @@ def UpdateFrequencyCalculation_MainThread_Filtered():
     global LoopCounter_CalculatedFromMainThread
     global DataStreamingDeltaT_CalculatedFromMainThread
     global DataStreamingFrequency_CalculatedFromMainThread_Filtered
-    global LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject
+    global LowPassFilterForDictsOfLists_Object
 
     try:
         DataStreamingDeltaT_CalculatedFromMainThread = CurrentTime_CalculatedFromMainThread - LastTime_CalculatedFromMainThread
 
         if DataStreamingDeltaT_CalculatedFromMainThread != 0.0:
             DataStreamingFrequency_CalculatedFromMainThread = 1.0/DataStreamingDeltaT_CalculatedFromMainThread
-            VariablesDict_Temp = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject.AddDataDictFromExternalProgram(dict([("DataStreamingFrequency_CalculatedFromMainThread", [DataStreamingFrequency_CalculatedFromMainThread])]))
+            VariablesDict_Temp = LowPassFilterForDictsOfLists_Object.AddDataDictFromExternalProgram(dict([("DataStreamingFrequency_CalculatedFromMainThread", [DataStreamingFrequency_CalculatedFromMainThread])]))
             DataStreamingFrequency_CalculatedFromMainThread_Filtered = VariablesDict_Temp["DataStreamingFrequency_CalculatedFromMainThread"]["Filtered_MostRecentValuesList"][0]
 
             if DataStreamingFrequency_CalculatedFromMainThread_Filtered <= 0.0:
@@ -409,14 +423,14 @@ def GUI_update_clock():
     global CurrentTime_CalculatedFromMainThread
     global DataStreamingFrequency_CalculatedFromMainThread_Filtered
 
-    global CSVdataLogger_ReubenPython3ClassObject
+    global CSVdataLogger_Object
     global CSVdataLogger_OPEN_FLAG
     global SHOW_IN_GUI_CSVdataLogger_FLAG
 
-    global EntryListWithBlinking_ReubenPython2and3ClassObject
+    global EntryListWithBlinking_Object
     global EntryListWithBlinking_OPEN_FLAG
 
-    global MyPrint_ReubenPython2and3ClassObject
+    global MyPrint_Object
     global MyPrint_OPEN_FLAG
     global SHOW_IN_GUI_MyPrint_FLAG
 
@@ -432,6 +446,7 @@ def GUI_update_clock():
     global DataDerivative_Threshold
 
     if USE_GUI_FLAG == 1:
+
         if EXIT_PROGRAM_FLAG == 0:
         #########################################################
         #########################################################
@@ -456,17 +471,17 @@ def GUI_update_clock():
 
             #########################################################
             if CSVdataLogger_OPEN_FLAG == 1 and SHOW_IN_GUI_CSVdataLogger_FLAG == 1:
-                CSVdataLogger_ReubenPython3ClassObject.GUI_update_clock()
+                CSVdataLogger_Object.GUI_update_clock()
             #########################################################
 
             #########################################################
             if EntryListWithBlinking_OPEN_FLAG == 1:
-                EntryListWithBlinking_ReubenPython2and3ClassObject.GUI_update_clock()
+                EntryListWithBlinking_Object.GUI_update_clock()
             #########################################################
 
             #########################################################
             if MyPrint_OPEN_FLAG == 1 and SHOW_IN_GUI_MyPrint_FLAG == 1:
-                MyPrint_ReubenPython2and3ClassObject.GUI_update_clock()
+                MyPrint_Object.GUI_update_clock()
             #########################################################
 
             root.after(GUI_RootAfterCallbackInterval_Milliseconds, GUI_update_clock)
@@ -480,11 +495,11 @@ def GUI_update_clock():
 ##########################################################################################################
 def ExitProgram_Callback(OptionalArugment = 0):
     global EXIT_PROGRAM_FLAG
-    global CSVdataLogger_ReubenPython3ClassObject_IsSavingFlag
+    global CSVdataLogger_IsSavingFlag
 
     print("ExitProgram_Callback event fired!")
 
-    if CSVdataLogger_ReubenPython3ClassObject_IsSavingFlag == 0:
+    if CSVdataLogger_IsSavingFlag == 0:
         EXIT_PROGRAM_FLAG = 1
     else:
         print("ExitProgram_Callback, ERROR! Still saving data.")
@@ -502,9 +517,22 @@ def GUI_Thread():
     global GUI_RootAfterCallbackInterval_Milliseconds
     global USE_TABS_IN_GUI_FLAG
 
+    global CSVdataLogger_Object
+    global CSVdataLogger_OPEN_FLAG
+
+    global EntryListWithBlinking_Object
+    global EntryListWithBlinking_OPEN_FLAG
+
+    global MyPrint_Object
+    global MyPrint_OPEN_FLAG
+
     ################################################# KEY GUI LINE
     #################################################
     root = Tk()
+
+    root.protocol("WM_DELETE_WINDOW", ExitProgram_Callback)  # Set the callback function for when the window's closed.
+    root.title("test_program_for_PeakDetection_ReubenPython3Class")
+    root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_Xpos, root_Ypos)) # set the dimensions of the screen and where it is placed
     #################################################
     #################################################
 
@@ -584,11 +612,29 @@ def GUI_Thread():
     ######################################################################################################
     ######################################################################################################
 
+    #################################################
+    #################################################
+    if CSVdataLogger_OPEN_FLAG == 1:
+        CSVdataLogger_Object.CreateGUIobjects(TkinterParent=Tab_CSVdataLogger)
+    #################################################
+    #################################################
+
+    #################################################
+    #################################################
+    if EntryListWithBlinking_OPEN_FLAG == 1:
+        EntryListWithBlinking_Object.CreateGUIobjects(TkinterParent=Tab_MainControls)
+    #################################################
+    #################################################
+
+    #################################################
+    #################################################
+    if MyPrint_OPEN_FLAG == 1:
+        MyPrint_Object.CreateGUIobjects(TkinterParent=Tab_MyPrint)
+    #################################################
+    #################################################
+
     ################################################# THIS BLOCK MUST COME 2ND-TO-LAST IN def GUI_Thread() IF USING TABS.
     #################################################
-    root.protocol("WM_DELETE_WINDOW", ExitProgram_Callback)  # Set the callback function for when the window's closed.
-    root.title("test_program_for_PeakDetection_ReubenPython3Class")
-    root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_Xpos, root_Ypos)) # set the dimensions of the screen and where it is placed
     root.after(GUI_RootAfterCallbackInterval_Milliseconds, GUI_update_clock)
     root.mainloop()
     #################################################
@@ -683,7 +729,13 @@ def InitializePhidgets():
 
 ##########################################################################################################
 ##########################################################################################################
+##########################################################################################################
+##########################################################################################################
 if __name__ == '__main__':
+
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
     #################################################
     #################################################
@@ -736,7 +788,7 @@ if __name__ == '__main__':
     USE_Keyboard_FLAG = 1
 
     global USE_VINThub_FLAG
-    USE_VINThub_FLAG = 1
+    USE_VINThub_FLAG = 0
 
     global FindPeaksFlag
     FindPeaksFlag = 1
@@ -878,7 +930,7 @@ if __name__ == '__main__':
     DataDerivative_Threshold = -10.0
     
     global LowPassFilterForDictsOfLists_UseMedianFilterFlag_DataDerivative
-    LowPassFilterForDictsOfLists_UseMedianFilterFlag_DataDerivative = 1
+    LowPassFilterForDictsOfLists_UseMedianFilterFlag_DataDerivative = 0
 
     global LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative #HAS TO BE HEAVILY FILTERED TO GET THE PEAK-DETECTION-TUNING RIGHT
     LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative = 0.7  # new_filtered_value = k * raw_sensor_value + (1 - k) * old_filtered_value
@@ -941,19 +993,16 @@ if __name__ == '__main__':
 
     ####################################################
     ####################################################
-    global LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject
+    global LowPassFilterForDictsOfLists_Object
 
     global LowPassFilterForDictsOfLists_OPEN_FLAG
     LowPassFilterForDictsOfLists_OPEN_FLAG = -1
 
-    global LowPassFilterForDictsOfLists_DictOfVariableFilterSettings
-    LowPassFilterForDictsOfLists_DictOfVariableFilterSettings = dict()
-
-    global LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict
-    LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict = dict()
+    global LowPassFilterForDictsOfLists_MostRecentDict
+    LowPassFilterForDictsOfLists_MostRecentDict = dict()
 
     global LowPassFilterForDictsOfLists_UseMedianFilterFlag
-    LowPassFilterForDictsOfLists_UseMedianFilterFlag = 1
+    LowPassFilterForDictsOfLists_UseMedianFilterFlag = 0
 
     global LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda #HAS TO BE HEAVILY FILTERED TO GET THE PEAK-DETECTION-TUNING RIGHT
     LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda = 0.2  # new_filtered_value = k * raw_sensor_value + (1 - k) * old_filtered_value
@@ -965,7 +1014,7 @@ if __name__ == '__main__':
 
     #################################################
     #################################################
-    global CSVdataLogger_ReubenPython3ClassObject
+    global CSVdataLogger_Object
 
     global CSVdataLogger_OPEN_FLAG
     CSVdataLogger_OPEN_FLAG = -1
@@ -982,8 +1031,8 @@ if __name__ == '__main__':
     global CSVdataLogger_MostRecentDict_AcceptNewDataFlag
     CSVdataLogger_MostRecentDict_AcceptNewDataFlag = -1
 
-    global CSVdataLogger_MostRecentDict_SaveFlag
-    CSVdataLogger_MostRecentDict_SaveFlag = -1
+    global CSVdataLogger_MostRecentDict_IsSavingFlag
+    CSVdataLogger_MostRecentDict_IsSavingFlag = -1
 
     global CSVdataLogger_MostRecentDict_DataQueue_qsize
     CSVdataLogger_MostRecentDict_DataQueue_qsize = -1
@@ -1000,20 +1049,14 @@ if __name__ == '__main__':
     global CSVdataLogger_IsSavingFlag
     CSVdataLogger_IsSavingFlag = 0
 
-    #################################################
     global CSVdataLogger_CSVfile_DirectoryPath
-
-    if platform.system() == "Windows":
-        CSVdataLogger_CSVfile_DirectoryPath = os.getcwd() + "\\CSVfiles"
-    else:
-        CSVdataLogger_CSVfile_DirectoryPath = os.getcwd() + "//CSVfiles" #Linux requires the opposite-direction slashes
-    #################################################
+    CSVdataLogger_CSVfile_DirectoryPath = os.path.join(os.getcwd(), "CSVfiles")
 
     #################################################
-    global CSVdataLogger_ReubenPython3ClassObject_setup_dict_VariableNamesForHeaderList
-    CSVdataLogger_ReubenPython3ClassObject_setup_dict_VariableNamesForHeaderList = ["Time",
-                                                                                    "NewValue_Raw",
-                                                                                    "NewValue_Filtered"]
+    global CSVdataLogger_SetupDict_VariableNamesForHeaderList
+    CSVdataLogger_SetupDict_VariableNamesForHeaderList = ["Time",
+                                                        "NewValue_Raw",
+                                                        "NewValue_Filtered"]
     #################################################
 
     #################################################
@@ -1021,7 +1064,7 @@ if __name__ == '__main__':
 
     #################################################
     #################################################
-    global MyPrint_ReubenPython2and3ClassObject
+    global MyPrint_Object
 
     global MyPrint_OPEN_FLAG
     MyPrint_OPEN_FLAG = -1
@@ -1030,7 +1073,7 @@ if __name__ == '__main__':
 
     #################################################
     #################################################
-    global EntryListWithBlinking_ReubenPython2and3ClassObject
+    global EntryListWithBlinking_Object
 
     global EntryListWithBlinking_OPEN_FLAG
     EntryListWithBlinking_OPEN_FLAG = -1
@@ -1052,7 +1095,7 @@ if __name__ == '__main__':
 
     #################################################
     #################################################
-    global MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject
+    global MyPlotterPureTkinterStandAloneProcess_Object
 
     global MyPlotterPureTkinterStandAloneProcess_OPEN_FLAG
     MyPlotterPureTkinterStandAloneProcess_OPEN_FLAG = -1
@@ -1060,8 +1103,8 @@ if __name__ == '__main__':
     global MyPlotterPureTkinterStandAloneProcess_MostRecentDict
     MyPlotterPureTkinterStandAloneProcess_MostRecentDict = dict()
 
-    global MyPlotterPureTkinterStandAloneProcess_MostRecentDict_StandAlonePlottingProcess_ReadyForWritingFlag
-    MyPlotterPureTkinterStandAloneProcess_MostRecentDict_StandAlonePlottingProcess_ReadyForWritingFlag = -1
+    global MyPlotterPureTkinterStandAloneProcess_MostRecentDict_ReadyForWritingFlag
+    MyPlotterPureTkinterStandAloneProcess_MostRecentDict_ReadyForWritingFlag = -1
 
     global LastTime_CalculatedFromMainThread_MyPlotterPureTkinterStandAloneProcess
     LastTime_CalculatedFromMainThread_MyPlotterPureTkinterStandAloneProcess = -11111.0
@@ -1086,33 +1129,25 @@ if __name__ == '__main__':
     #################################################
     #################################################
 
-    #################################################  KEY GUI LINE
-    #################################################
-    if USE_GUI_FLAG == 1:
-        print("Starting GUI thread...")
-        GUI_Thread_ThreadingObject = threading.Thread(target=GUI_Thread)
-        GUI_Thread_ThreadingObject.setDaemon(True) #Should mean that the GUI thread is destroyed automatically when the main thread is destroyed.
-        GUI_Thread_ThreadingObject.start()
-        time.sleep(0.5)  #Allow enough time for 'root' to be created that we can then pass it into other classes.
-    else:
-        root = None
-        Tab_MainControls = None
-        Tab_CSVdataLogger = None
-        Tab_MyPrint = None
-    #################################################
-    #################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
     #################################################
     #################################################
+    global LowPassFilterForDictsOfLists_DictOfVariableFilterSettings
+    LowPassFilterForDictsOfLists_DictOfVariableFilterSettings = dict([("DataStreamingFrequency_CalculatedFromMainThread", dict([("UseMedianFilterFlag", 0), ("UseExponentialSmoothingFilterFlag", 1), ("ExponentialSmoothingFilterLambda", 0.5)])),
+                                                                      ("voltageRatioInput0_Value", dict([("UseMedianFilterFlag", LowPassFilterForDictsOfLists_UseMedianFilterFlag), ("UseExponentialSmoothingFilterFlag", 1),("ExponentialSmoothingFilterLambda", LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda)])),
+                                                                      ("DataDerivative", dict([("UseMedianFilterFlag", LowPassFilterForDictsOfLists_UseMedianFilterFlag_DataDerivative), ("UseExponentialSmoothingFilterFlag", 1),("ExponentialSmoothingFilterLambda", LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative)]))])
+
     if USE_LowPassFilterForDictsOfLists_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
         try:
-
-            LowPassFilterForDictsOfLists_DictOfVariableFilterSettings = dict([("DataStreamingFrequency_CalculatedFromMainThread", dict([("UseMedianFilterFlag", 1), ("UseExponentialSmoothingFilterFlag", 1), ("ExponentialSmoothingFilterLambda", 0.5)])),
-                                                                              ("voltageRatioInput0_Value", dict([("UseMedianFilterFlag", LowPassFilterForDictsOfLists_UseMedianFilterFlag), ("UseExponentialSmoothingFilterFlag", 1),("ExponentialSmoothingFilterLambda", LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda)])),
-                                                                              ("DataDerivative", dict([("UseMedianFilterFlag", LowPassFilterForDictsOfLists_UseMedianFilterFlag_DataDerivative), ("UseExponentialSmoothingFilterFlag", 1),("ExponentialSmoothingFilterLambda", LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative)]))])
-
-            LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject = LowPassFilterForDictsOfLists_ReubenPython2and3Class(dict([("DictOfVariableFilterSettings", LowPassFilterForDictsOfLists_DictOfVariableFilterSettings)]))
-            LowPassFilterForDictsOfLists_OPEN_FLAG = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject.OBJECT_CREATED_SUCCESSFULLY_FLAG
+            LowPassFilterForDictsOfLists_Object = LowPassFilterForDictsOfLists_ReubenPython2and3Class(dict([("DictOfVariableFilterSettings", LowPassFilterForDictsOfLists_DictOfVariableFilterSettings)]))
+            LowPassFilterForDictsOfLists_OPEN_FLAG = LowPassFilterForDictsOfLists_Object.OBJECT_CREATED_SUCCESSFULLY_FLAG
 
         except:
             exceptions = sys.exc_info()[0]
@@ -1130,47 +1165,46 @@ if __name__ == '__main__':
     #################################################
     #################################################
 
-    #################################################
-    #################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
     #################################################
-    global CSVdataLogger_ReubenPython3ClassObject_GUIparametersDict
-    CSVdataLogger_ReubenPython3ClassObject_GUIparametersDict = dict([("USE_GUI_FLAG", USE_GUI_FLAG and SHOW_IN_GUI_CSVdataLogger_FLAG),
-                                    ("root", Tab_CSVdataLogger),
-                                    ("EnableInternal_MyPrint_Flag", 1),
-                                    ("NumberOfPrintLines", 10),
-                                    ("UseBorderAroundThisGuiObjectFlag", 0),
-                                    ("GUI_ROW", GUI_ROW_CSVdataLogger),
-                                    ("GUI_COLUMN", GUI_COLUMN_CSVdataLogger),
-                                    ("GUI_PADX", GUI_PADX_CSVdataLogger),
-                                    ("GUI_PADY", GUI_PADY_CSVdataLogger),
-                                    ("GUI_ROWSPAN", GUI_ROWSPAN_CSVdataLogger),
-                                    ("GUI_COLUMNSPAN", GUI_COLUMNSPAN_CSVdataLogger)])
     #################################################
+    global CSVdataLogger_GUIparametersDict
+    CSVdataLogger_GUIparametersDict = dict([("USE_GUI_FLAG", USE_GUI_FLAG and SHOW_IN_GUI_CSVdataLogger_FLAG),
+                                            ("EnableInternal_MyPrint_Flag", 1),
+                                            ("NumberOfPrintLines", 10),
+                                            ("UseBorderAroundThisGuiObjectFlag", 0),
+                                            ("GUI_ROW", GUI_ROW_CSVdataLogger),
+                                            ("GUI_COLUMN", GUI_COLUMN_CSVdataLogger),
+                                            ("GUI_PADX", GUI_PADX_CSVdataLogger),
+                                            ("GUI_PADY", GUI_PADY_CSVdataLogger),
+                                            ("GUI_ROWSPAN", GUI_ROWSPAN_CSVdataLogger),
+                                            ("GUI_COLUMNSPAN", GUI_COLUMNSPAN_CSVdataLogger)])
 
-    #################################################
-    global CSVdataLogger_ReubenPython3ClassObject_setup_dict
-    CSVdataLogger_ReubenPython3ClassObject_setup_dict = dict([("GUIparametersDict", CSVdataLogger_ReubenPython3ClassObject_GUIparametersDict),
-                                                                                ("NameToDisplay_UserSet", "CSVdataLogger"),
-                                                                                ("CSVfile_DirectoryPath", CSVdataLogger_CSVfile_DirectoryPath),
-                                                                                ("FileNamePrefix", "CSV_file_"),
-                                                                                ("VariableNamesForHeaderList", CSVdataLogger_ReubenPython3ClassObject_setup_dict_VariableNamesForHeaderList),
-                                                                                ("MainThread_TimeToSleepEachLoop", 0.010),
-                                                                                ("SaveOnStartupFlag", 0)])
-    #################################################
+    global CSVdataLogger_SetupDict
+    CSVdataLogger_SetupDict = dict([("GUIparametersDict", CSVdataLogger_GUIparametersDict),
+                                    ("NameToDisplay_UserSet", "CSVdataLogger"),
+                                    ("CSVfile_DirectoryPath", CSVdataLogger_CSVfile_DirectoryPath),
+                                    ("FileNamePrefix", "CSV_file_"),
+                                    ("VariableNamesForHeaderList", CSVdataLogger_SetupDict_VariableNamesForHeaderList),
+                                    ("MainThread_TimeToSleepEachLoop", 0.010),
+                                    ("SaveOnStartupFlag", 0)])
 
-    #################################################
     if USE_CSVdataLogger_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
         try:
-            CSVdataLogger_ReubenPython3ClassObject = CSVdataLogger_ReubenPython3Class(CSVdataLogger_ReubenPython3ClassObject_setup_dict)
-            CSVdataLogger_OPEN_FLAG = CSVdataLogger_ReubenPython3ClassObject.OBJECT_CREATED_SUCCESSFULLY_FLAG
+            CSVdataLogger_Object = CSVdataLogger_ReubenPython3Class(CSVdataLogger_SetupDict)
+            CSVdataLogger_OPEN_FLAG = CSVdataLogger_Object.OBJECT_CREATED_SUCCESSFULLY_FLAG
 
         except:
             exceptions = sys.exc_info()[0]
-            print("CSVdataLogger_ReubenPython3ClassObject __init__: Exceptions: %s" % exceptions)
+            print("CSVdataLogger_Object __init__: Exceptions: %s" % exceptions)
             traceback.print_exc()
-    #################################################
-
     #################################################
     #################################################
 
@@ -1184,17 +1218,24 @@ if __name__ == '__main__':
     #################################################
     #################################################
 
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+
     #################################################
     #################################################
-    global EntryListWithBlinking_ReubenPython2and3ClassObject_GUIparametersDict
-    EntryListWithBlinking_ReubenPython2and3ClassObject_GUIparametersDict = dict([("root", Tab_MainControls),
-                                    ("UseBorderAroundThisGuiObjectFlag", 0),
-                                    ("GUI_ROW", GUI_ROW_EntryListWithBlinking),
-                                    ("GUI_COLUMN", GUI_COLUMN_EntryListWithBlinking),
-                                    ("GUI_PADX", GUI_PADX_EntryListWithBlinking),
-                                    ("GUI_PADY", GUI_PADY_EntryListWithBlinking),
-                                    ("GUI_ROWSPAN", GUI_ROWSPAN_EntryListWithBlinking),
-                                    ("GUI_COLUMNSPAN", GUI_COLUMNSPAN_EntryListWithBlinking)])
+    global EntryListWithBlinking_GUIparametersDict
+    EntryListWithBlinking_GUIparametersDict = dict([("UseBorderAroundThisGuiObjectFlag", 0),
+                                                    ("GUI_ROW", GUI_ROW_EntryListWithBlinking),
+                                                    ("GUI_COLUMN", GUI_COLUMN_EntryListWithBlinking),
+                                                    ("GUI_PADX", GUI_PADX_EntryListWithBlinking),
+                                                    ("GUI_PADY", GUI_PADY_EntryListWithBlinking),
+                                                    ("GUI_ROWSPAN", GUI_ROWSPAN_EntryListWithBlinking),
+                                                    ("GUI_COLUMNSPAN", GUI_COLUMNSPAN_EntryListWithBlinking)])
 
     global EntryListWithBlinking_Variables_ListOfDicts
     EntryListWithBlinking_Variables_ListOfDicts = [dict([("Name", "LowPassFilterForDictsOfLists_UseMedianFilterFlag"),("Type", "int"),("StartingVal", LowPassFilterForDictsOfLists_UseMedianFilterFlag),("MinVal", 0),("MaxVal", 1),("EntryBlinkEnabled", 0),("EntryWidth", EntryWidth),("LabelWidth", LabelWidth),("FontSize", FontSize)]),
@@ -1219,19 +1260,20 @@ if __name__ == '__main__':
                                                 dict([("Name", "LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative"),("Type", "float"),("StartingVal", LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative),("MinVal", 0.0),("MaxVal", 1.0),("EntryBlinkEnabled", 0),("EntryWidth", EntryWidth),("LabelWidth", LabelWidth),("FontSize", FontSize)]),
                                                 dict([("Name", "DataDerivative_Threshold"),("Type", "float"),("StartingVal", DataDerivative_Threshold),("MinVal", -1000000.0),("MaxVal", 1000000.0),("EntryBlinkEnabled", 0),("EntryWidth", EntryWidth),("LabelWidth", LabelWidth),("FontSize", FontSize)])]
 
-    global EntryListWithBlinking_ReubenPython2and3ClassObject_setup_dict
-    EntryListWithBlinking_ReubenPython2and3ClassObject_setup_dict = dict([("GUIparametersDict", EntryListWithBlinking_ReubenPython2and3ClassObject_GUIparametersDict),
-                                                                          ("EntryListWithBlinking_Variables_ListOfDicts", EntryListWithBlinking_Variables_ListOfDicts),
-                                                                          ("DebugByPrintingVariablesFlag", 0),
-                                                                          ("LoseFocusIfMouseLeavesEntryFlag", 0)])
+    global EntryListWithBlinking_SetupDict
+    EntryListWithBlinking_SetupDict = dict([("GUIparametersDict", EntryListWithBlinking_GUIparametersDict),
+                                          ("EntryListWithBlinking_Variables_ListOfDicts", EntryListWithBlinking_Variables_ListOfDicts),
+                                          ("DebugByPrintingVariablesFlag", 0),
+                                          ("LoseFocusIfMouseLeavesEntryFlag", 0)])
+
     if USE_EntryListWithBlinking_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
         try:
-            EntryListWithBlinking_ReubenPython2and3ClassObject = EntryListWithBlinking_ReubenPython2and3Class(EntryListWithBlinking_ReubenPython2and3ClassObject_setup_dict)
-            EntryListWithBlinking_OPEN_FLAG = EntryListWithBlinking_ReubenPython2and3ClassObject.OBJECT_CREATED_SUCCESSFULLY_FLAG
+            EntryListWithBlinking_Object = EntryListWithBlinking_ReubenPython2and3Class(EntryListWithBlinking_SetupDict)
+            EntryListWithBlinking_OPEN_FLAG = EntryListWithBlinking_Object.OBJECT_CREATED_SUCCESSFULLY_FLAG
 
         except:
             exceptions = sys.exc_info()[0]
-            print("EntryListWithBlinking_ReubenPython2and3ClassObject __init__: Exceptions: %s" % exceptions)
+            print("EntryListWithBlinking_Object __init__: Exceptions: %s" % exceptions)
             traceback.print_exc()
     #################################################
     #################################################
@@ -1246,34 +1288,41 @@ if __name__ == '__main__':
     #################################################
     #################################################
 
-    #################################################
-    #################################################
-    global MyPrint_ReubenPython2and3ClassObject_GUIparametersDict
-    MyPrint_ReubenPython2and3ClassObject_GUIparametersDict = dict([("USE_GUI_FLAG", USE_GUI_FLAG and SHOW_IN_GUI_MyPrint_FLAG),
-                                                                    ("root", Tab_MyPrint),
-                                                                    ("UseBorderAroundThisGuiObjectFlag", 0),
-                                                                    ("GUI_ROW", GUI_ROW_MyPrint),
-                                                                    ("GUI_COLUMN", GUI_COLUMN_MyPrint),
-                                                                    ("GUI_PADX", GUI_PADX_MyPrint),
-                                                                    ("GUI_PADY", GUI_PADY_MyPrint),
-                                                                    ("GUI_ROWSPAN", GUI_ROWSPAN_MyPrint),
-                                                                    ("GUI_COLUMNSPAN", GUI_COLUMNSPAN_MyPrint)])
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
-    global MyPrint_ReubenPython2and3ClassObject_setup_dict
-    MyPrint_ReubenPython2and3ClassObject_setup_dict = dict([("NumberOfPrintLines", 10),
-                                                            ("WidthOfPrintingLabel", 200),
-                                                            ("PrintToConsoleFlag", 1),
-                                                            ("LogFileNameFullPath", os.getcwd() + "//TestLog.txt"),
-                                                            ("GUIparametersDict", MyPrint_ReubenPython2and3ClassObject_GUIparametersDict)])
+    #################################################
+    #################################################
+    global MyPrint_GUIparametersDict
+    MyPrint_GUIparametersDict = dict([("USE_GUI_FLAG", USE_GUI_FLAG and SHOW_IN_GUI_MyPrint_FLAG),
+                                        ("UseBorderAroundThisGuiObjectFlag", 0),
+                                        ("GUI_ROW", GUI_ROW_MyPrint),
+                                        ("GUI_COLUMN", GUI_COLUMN_MyPrint),
+                                        ("GUI_PADX", GUI_PADX_MyPrint),
+                                        ("GUI_PADY", GUI_PADY_MyPrint),
+                                        ("GUI_ROWSPAN", GUI_ROWSPAN_MyPrint),
+                                        ("GUI_COLUMNSPAN", GUI_COLUMNSPAN_MyPrint)])
+
+    global MyPrint_SetupDict
+    MyPrint_SetupDict = dict([("NumberOfPrintLines", 10),
+                                ("WidthOfPrintingLabel", 200),
+                                ("PrintToConsoleFlag", 1),
+                                ("LogFileNameFullPath", os.path.join(os.getcwd(), "TestLog.txt")),
+                                ("GUIparametersDict", MyPrint_GUIparametersDict)])
 
     if USE_MyPrint_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
         try:
-            MyPrint_ReubenPython2and3ClassObject = MyPrint_ReubenPython2and3Class(MyPrint_ReubenPython2and3ClassObject_setup_dict)
-            MyPrint_OPEN_FLAG = MyPrint_ReubenPython2and3ClassObject.OBJECT_CREATED_SUCCESSFULLY_FLAG
+            MyPrint_Object = MyPrint_ReubenPython2and3Class(MyPrint_SetupDict)
+            MyPrint_OPEN_FLAG = MyPrint_Object.OBJECT_CREATED_SUCCESSFULLY_FLAG
 
         except:
             exceptions = sys.exc_info()[0]
-            print("MyPrint_ReubenPython2and3ClassObject __init__: Exceptions: %s" % exceptions)
+            print("MyPrint_Object __init__: Exceptions: %s" % exceptions)
             traceback.print_exc()
     #################################################
     #################################################
@@ -1288,50 +1337,58 @@ if __name__ == '__main__':
     #################################################
     #################################################
 
-    #################################################
-    #################################################
-    global MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject_GUIparametersDict
-    MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject_GUIparametersDict = dict([("EnableInternal_MyPrint_Flag", 1),
-                                                                                                ("NumberOfPrintLines", 10),
-                                                                                                ("UseBorderAroundThisGuiObjectFlag", 0),
-                                                                                                ("GraphCanvasWidth", 890),
-                                                                                                ("GraphCanvasHeight", 700),
-                                                                                                ("GraphCanvasWindowStartingX", 0),
-                                                                                                ("GraphCanvasWindowStartingY", 0),
-                                                                                                ("GUI_RootAfterCallbackInterval_Milliseconds_IndependentOfParentRootGUIloopEvents", 20)])
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
-    global MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject_setup_dict
-    MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject_setup_dict = dict([("GUIparametersDict", MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject_GUIparametersDict),
-                                                                                        ("ParentPID", os.getpid()),
-                                                                                        ("WatchdogTimerExpirationDurationSeconds_StandAlonePlottingProcess", 5.0),
-                                                                                        ("CurvesToPlotNamesAndColorsDictOfLists", dict([("NameList", ["Channel0", "Channel0_Derivative", "Channel0_PeaksMax", "Channel0_PeaksMin"]),
-                                                                                                                                        ("MarkerSizeList", [3, 3, 3, 3]),
-                                                                                                                                        ("LineWidthList", [3, 3, 0, 0]),
-                                                                                                                                        ("ColorList", ["Gray", "Orange", "Blue", "Red"])])),
-                                                                                        ("NumberOfDataPointToPlot", 50),
-                                                                                        ("XaxisNumberOfTickMarks", 10),
-                                                                                        ("YaxisNumberOfTickMarks", 10),
-                                                                                        ("XaxisNumberOfDecimalPlacesForLabels", 3),
-                                                                                        ("YaxisNumberOfDecimalPlacesForLabels", 3),
-                                                                                        ("XaxisAutoscaleFlag", 1),
-                                                                                        ("YaxisAutoscaleFlag", 1),
-                                                                                        ("X_min", 0.0),
-                                                                                        ("X_max", 20.0),
-                                                                                        ("Y_min", -30.0),
-                                                                                        ("Y_max", 30.0),
-                                                                                        ("XaxisDrawnAtBottomOfGraph", 0),
-                                                                                        ("XaxisLabelString", "Time (sec)"),
-                                                                                        ("YaxisLabelString", "Y-units (units)"),
-                                                                                        ("ShowLegendFlag", 1)])
+    #################################################
+    #################################################
+    global MyPlotterPureTkinterStandAloneProcess_GUIparametersDict
+    MyPlotterPureTkinterStandAloneProcess_GUIparametersDict = dict([("EnableInternal_MyPrint_Flag", 1),
+                                                                    ("NumberOfPrintLines", 10),
+                                                                    ("UseBorderAroundThisGuiObjectFlag", 0),
+                                                                    ("GraphCanvasWidth", 890),
+                                                                    ("GraphCanvasHeight", 700),
+                                                                    ("GraphCanvasWindowStartingX", 0),
+                                                                    ("GraphCanvasWindowStartingY", 0),
+                                                                    ("GUI_RootAfterCallbackInterval_Milliseconds_IndependentOfParentRootGUIloopEvents", 20)])
+
+    global MyPlotterPureTkinterStandAloneProcess_SetupDict
+    MyPlotterPureTkinterStandAloneProcess_SetupDict = dict([("GUIparametersDict", MyPlotterPureTkinterStandAloneProcess_GUIparametersDict),
+                                                            ("ParentPID", os.getpid()),
+                                                            ("WatchdogTimerExpirationDurationSeconds_StandAlonePlottingProcess", 5.0),
+                                                            ("CurvesToPlotNamesAndColorsDictOfLists", dict([("NameList", ["Channel0", "Channel0_Derivative", "Channel0_PeaksMax", "Channel0_PeaksMin"]),
+                                                                                                            ("MarkerSizeList", [3, 3, 3, 3]),
+                                                                                                            ("LineWidthList", [3, 3, 0, 0]),
+                                                                                                            ("ColorList", ["Gray", "Orange", "Blue", "Red"])])),
+                                                            ("NumberOfDataPointToPlot", 50),
+                                                            ("XaxisNumberOfTickMarks", 10),
+                                                            ("YaxisNumberOfTickMarks", 10),
+                                                            ("XaxisNumberOfDecimalPlacesForLabels", 3),
+                                                            ("YaxisNumberOfDecimalPlacesForLabels", 3),
+                                                            ("XaxisAutoscaleFlag", 1),
+                                                            ("YaxisAutoscaleFlag", 1),
+                                                            ("X_min", 0.0),
+                                                            ("X_max", 20.0),
+                                                            ("Y_min", -30.0),
+                                                            ("Y_max", 30.0),
+                                                            ("XaxisDrawnAtBottomOfGraph", 0),
+                                                            ("XaxisLabelString", "Time (sec)"),
+                                                            ("YaxisLabelString", "Y-units (units)"),
+                                                            ("ShowLegendFlag", 1)])
 
     if USE_MyPlotterPureTkinterStandAloneProcess_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
         try:
-            MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject = MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3Class(MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject_setup_dict)
-            MyPlotterPureTkinterStandAloneProcess_OPEN_FLAG = MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject.OBJECT_CREATED_SUCCESSFULLY_FLAG
+            MyPlotterPureTkinterStandAloneProcess_Object = MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3Class(MyPlotterPureTkinterStandAloneProcess_SetupDict)
+            MyPlotterPureTkinterStandAloneProcess_OPEN_FLAG = MyPlotterPureTkinterStandAloneProcess_Object.OBJECT_CREATED_SUCCESSFULLY_FLAG
 
         except:
             exceptions = sys.exc_info()[0]
-            print("MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject, exceptions: %s" % exceptions)
+            print("MyPlotterPureTkinterStandAloneProcess_Object, exceptions: %s" % exceptions)
             traceback.print_exc()
     #################################################
     #################################################
@@ -1345,6 +1402,14 @@ if __name__ == '__main__':
                 ExitProgram_Callback()
     #################################################
     #################################################
+
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
     #################################################
     #################################################
@@ -1370,16 +1435,38 @@ if __name__ == '__main__':
     #################################################
     #################################################
 
-    #################################################
-    #################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
     if USE_Keyboard_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
         keyboard.on_press_key("esc", ExitProgram_Callback)
-    #################################################
-    #################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
-    #################################################
-    #################################################
-    #################################################
+    ########################################################################################################## KEY GUI LINE
+    ##########################################################################################################
+    ##########################################################################################################
+    if USE_GUI_FLAG == 1 and EXIT_PROGRAM_FLAG == 0:
+        print("Starting GUI thread...")
+        GUI_Thread_ThreadingObject = threading.Thread(target=GUI_Thread, daemon=True) #Daemon=True means that the GUI thread is destroyed automatically when the main thread is destroyed
+        GUI_Thread_ThreadingObject.start()
+    else:
+        root = None
+        Tab_MainControls = None
+        Tab_CSVdataLogger = None
+        Tab_MyPrint = None
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
     print("Starting main loop 'test_program_for_CSVdataLogger_ReubenPython3Class.")
     StartingTime_CalculatedFromMainThread = getPreciseSecondsTimeStampString()
 
@@ -1394,9 +1481,9 @@ if __name__ == '__main__':
         ################################################### GET's
         ###################################################
         if CSVdataLogger_OPEN_FLAG == 1:
-            CSVdataLogger_ReubenPython3ClassObject_IsSavingFlag = CSVdataLogger_ReubenPython3ClassObject.IsSaving()
+            CSVdataLogger_IsSavingFlag = CSVdataLogger_Object.IsSaving()
         else:
-            CSVdataLogger_ReubenPython3ClassObject_IsSavingFlag = 0
+            CSVdataLogger_IsSavingFlag = 0
         ###################################################
         ###################################################
 
@@ -1404,13 +1491,13 @@ if __name__ == '__main__':
         ####################################################
         if CSVdataLogger_OPEN_FLAG == 1:
 
-            CSVdataLogger_MostRecentDict = CSVdataLogger_ReubenPython3ClassObject.GetMostRecentDataDict()
+            CSVdataLogger_MostRecentDict = CSVdataLogger_Object.GetMostRecentDataDict()
 
             if "Time" in CSVdataLogger_MostRecentDict:
                 CSVdataLogger_MostRecentDict_Time = CSVdataLogger_MostRecentDict["Time"]
                 CSVdataLogger_MostRecentDict_DataStreamingFrequency_CalculatedFromMainThread = CSVdataLogger_MostRecentDict["DataStreamingFrequency_CalculatedFromMainThread"]
                 CSVdataLogger_MostRecentDict_AcceptNewDataFlag = CSVdataLogger_MostRecentDict["AcceptNewDataFlag"]
-                CSVdataLogger_MostRecentDict_SaveFlag = CSVdataLogger_MostRecentDict["SaveFlag"]
+                CSVdataLogger_MostRecentDict_IsSavingFlag = CSVdataLogger_MostRecentDict["IsSavingFlag"]
                 CSVdataLogger_MostRecentDict_DataQueue_qsize = CSVdataLogger_MostRecentDict["DataQueue_qsize"]
                 CSVdataLogger_MostRecentDict_VariableNamesForHeaderList = CSVdataLogger_MostRecentDict["VariableNamesForHeaderList"]
                 CSVdataLogger_MostRecentDict_FilepathFull = CSVdataLogger_MostRecentDict["FilepathFull"]
@@ -1426,7 +1513,7 @@ if __name__ == '__main__':
         ################################################### GET's
         if EntryListWithBlinking_OPEN_FLAG == 1:
 
-            EntryListWithBlinking_MostRecentDict = EntryListWithBlinking_ReubenPython2and3ClassObject.GetMostRecentDataDict()
+            EntryListWithBlinking_MostRecentDict = EntryListWithBlinking_Object.GetMostRecentDataDict()
 
             if "DataUpdateNumber" in EntryListWithBlinking_MostRecentDict and EntryListWithBlinking_MostRecentDict["DataUpdateNumber"] != EntryListWithBlinking_MostRecentDict_DataUpdateNumber_last:
                 EntryListWithBlinking_MostRecentDict_DataUpdateNumber = EntryListWithBlinking_MostRecentDict["DataUpdateNumber"]
@@ -1452,7 +1539,7 @@ if __name__ == '__main__':
                             LowPassFilterForDictsOfLists_DictOfVariableFilterSettings["voltageRatioInput0_Value"]["UseMedianFilterFlag"] = LowPassFilterForDictsOfLists_UseMedianFilterFlag
                             LowPassFilterForDictsOfLists_DictOfVariableFilterSettings["DataDerivative"]["ExponentialSmoothingFilterLambda"] = LowPassFilterForDictsOfLists_ExponentialSmoothingFilterLambda_DataDerivative
 
-                            LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject.AddOrUpdateDictOfVariableFilterSettingsFromExternalProgram(LowPassFilterForDictsOfLists_DictOfVariableFilterSettings)
+                            LowPassFilterForDictsOfLists_Object.AddOrUpdateDictOfVariableFilterSettingsFromExternalProgram(LowPassFilterForDictsOfLists_DictOfVariableFilterSettings)
                         except:
                             pass
 
@@ -1486,8 +1573,8 @@ if __name__ == '__main__':
         #################################################### GET's
         ####################################################
         if LowPassFilterForDictsOfLists_OPEN_FLAG == 1:
-            LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject.GetMostRecentDataDict()
-            #print("LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict: " + str(LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict))
+            LowPassFilterForDictsOfLists_MostRecentDict = LowPassFilterForDictsOfLists_Object.GetMostRecentDataDict()
+            #print("LowPassFilterForDictsOfLists_MostRecentDict: " + str(LowPassFilterForDictsOfLists_MostRecentDict))
         ####################################################
         ####################################################
 
@@ -1496,12 +1583,12 @@ if __name__ == '__main__':
 
         ####################################################
         if LowPassFilterForDictsOfLists_OPEN_FLAG == 1:
-            LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject.AddDataDictFromExternalProgram(dict([("voltageRatioInput0_Value", [voltageRatioInput0_Value])]))
+            LowPassFilterForDictsOfLists_MostRecentDict = LowPassFilterForDictsOfLists_Object.AddDataDictFromExternalProgram(dict([("voltageRatioInput0_Value", [voltageRatioInput0_Value])]))
 
-            if "voltageRatioInput0_Value" in LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict:
+            if "voltageRatioInput0_Value" in LowPassFilterForDictsOfLists_MostRecentDict:
 
-                voltageRatioInput0_Value_Raw = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict["voltageRatioInput0_Value"]["Raw_MostRecentValuesList"][0]
-                voltageRatioInput0_Value_Filtered = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject_MostRecentDict["voltageRatioInput0_Value"]["Filtered_MostRecentValuesList"][0]
+                voltageRatioInput0_Value_Raw = LowPassFilterForDictsOfLists_MostRecentDict["voltageRatioInput0_Value"]["Raw_MostRecentValuesList"][0]
+                voltageRatioInput0_Value_Filtered = LowPassFilterForDictsOfLists_MostRecentDict["voltageRatioInput0_Value"]["Filtered_MostRecentValuesList"][0]
 
         else:
             voltageRatioInput0_Value_Filtered = voltageRatioInput0_Value
@@ -1544,7 +1631,7 @@ if __name__ == '__main__':
         DataColumnIndex = 1
         DataDerivative_temp = (DataList[0, DataColumnIndex] - DataList[1, DataColumnIndex])/(1.0/DataStreamingFrequency_CalculatedFromMainThread_Filtered)
 
-        VariablesDict_Temp = LowPassFilterForDictsOfLists_ReubenPython2and3ClassObject.AddDataDictFromExternalProgram(dict([("DataDerivative", [DataDerivative_temp])]))
+        VariablesDict_Temp = LowPassFilterForDictsOfLists_Object.AddDataDictFromExternalProgram(dict([("DataDerivative", [DataDerivative_temp])]))
         DataDerivative = VariablesDict_Temp["DataDerivative"]["Filtered_MostRecentValuesList"][0]
 
         ####################################################
@@ -1648,7 +1735,7 @@ if __name__ == '__main__':
         ####################################################
         ####################################################
         if CSVdataLogger_OPEN_FLAG == 1:
-            CSVdataLogger_ReubenPython3ClassObject.AddDataToCSVfile_ExternalFunctionCall([CurrentTime_CalculatedFromMainThread,
+            CSVdataLogger_Object.AddDataToCSVfile_ExternalFunctionCall([CurrentTime_CalculatedFromMainThread,
                                                                                           NewValue_Raw,
                                                                                           NewValue_Filtered])
         ####################################################
@@ -1661,27 +1748,27 @@ if __name__ == '__main__':
             ####################################################
             try:
 
-                MyPlotterPureTkinterStandAloneProcess_MostRecentDict = MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject.GetMostRecentDataDict()
+                MyPlotterPureTkinterStandAloneProcess_MostRecentDict = MyPlotterPureTkinterStandAloneProcess_Object.GetMostRecentDataDict()
 
                 if "StandAlonePlottingProcess_ReadyForWritingFlag" in MyPlotterPureTkinterStandAloneProcess_MostRecentDict:
-                    MyPlotterPureTkinterStandAloneProcess_MostRecentDict_StandAlonePlottingProcess_ReadyForWritingFlag = MyPlotterPureTkinterStandAloneProcess_MostRecentDict["StandAlonePlottingProcess_ReadyForWritingFlag"]
+                    MyPlotterPureTkinterStandAloneProcess_MostRecentDict_ReadyForWritingFlag = MyPlotterPureTkinterStandAloneProcess_MostRecentDict["StandAlonePlottingProcess_ReadyForWritingFlag"]
 
-                    if MyPlotterPureTkinterStandAloneProcess_MostRecentDict_StandAlonePlottingProcess_ReadyForWritingFlag == 1:
-                        if CurrentTime_CalculatedFromMainThread - LastTime_CalculatedFromMainThread_MyPlotterPureTkinterStandAloneProcess >= 0.040:
-                            MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject.ExternalAddPointOrListOfPointsToPlot(["Channel0"], #, "Channel0_Derivative"
-                                                                                                                                    [CurrentTime_CalculatedFromMainThread]*1,
-                                                                                                                                    [NewValue_Filtered]) #, DataDerivative
+                    if MyPlotterPureTkinterStandAloneProcess_MostRecentDict_ReadyForWritingFlag == 1:
+                        if CurrentTime_CalculatedFromMainThread - LastTime_CalculatedFromMainThread_MyPlotterPureTkinterStandAloneProcess >= MyPlotterPureTkinterStandAloneProcess_GUIparametersDict["GUI_RootAfterCallbackInterval_Milliseconds_IndependentOfParentRootGUIloopEvents"]/1000.0 + 0.001:
+                            MyPlotterPureTkinterStandAloneProcess_Object.ExternalAddPointOrListOfPointsToPlot(["Channel0"], #, "Channel0_Derivative"
+                                                                                                                [CurrentTime_CalculatedFromMainThread]*1,
+                                                                                                                [NewValue_Filtered]) #, DataDerivative
 
 
                             if len(PeakMaxDataList_X) > 0 and len(PeakMaxDataList_Y) > 0:
-                                MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject.ExternalAddPointOrListOfPointsToPlot(["Channel0_PeaksMax"],
-                                                                                                                                        [PeakMaxDataList_X[0]],
-                                                                                                                                        [PeakMaxDataList_Y[0]])
+                                MyPlotterPureTkinterStandAloneProcess_Object.ExternalAddPointOrListOfPointsToPlot(["Channel0_PeaksMax"],
+                                                                                                                    [PeakMaxDataList_X[0]],
+                                                                                                                    [PeakMaxDataList_Y[0]])
 
                             if len(PeakMinDataList_X) > 0 and len(PeakMinDataList_Y) > 0:
-                                MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject.ExternalAddPointOrListOfPointsToPlot(["Channel0_PeaksMin"],
-                                                                                                                                        [PeakMinDataList_X[0]],
-                                                                                                                                        [PeakMinDataList_Y[0]])
+                                MyPlotterPureTkinterStandAloneProcess_Object.ExternalAddPointOrListOfPointsToPlot(["Channel0_PeaksMin"],
+                                                                                                                    [PeakMinDataList_X[0]],
+                                                                                                                    [PeakMinDataList_Y[0]])
 
 
                             LastTime_CalculatedFromMainThread_MyPlotterPureTkinterStandAloneProcess = CurrentTime_CalculatedFromMainThread
@@ -1702,36 +1789,41 @@ if __name__ == '__main__':
 
         UpdateFrequencyCalculation_MainThread_Filtered()
         time.sleep(0.002)
-    #################################################
-    #################################################
-    #################################################
 
-    ################################################# THIS IS THE EXIT ROUTINE!
-    #################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
+
+    ########################################################################################################## THIS IS THE EXIT ROUTINE!
+    ##########################################################################################################
+    ##########################################################################################################
     print("Exiting main program 'test_program_for_CSVdataLogger_ReubenPython3Class.")
 
     #################################################
     if CSVdataLogger_OPEN_FLAG == 1:
-        CSVdataLogger_ReubenPython3ClassObject.ExitProgram_Callback()
+        CSVdataLogger_Object.ExitProgram_Callback()
     #################################################
 
     #################################################
     if MyPrint_OPEN_FLAG == 1:
-        MyPrint_ReubenPython2and3ClassObject.ExitProgram_Callback()
+        MyPrint_Object.ExitProgram_Callback()
     #################################################
 
     #################################################
     if EntryListWithBlinking_OPEN_FLAG == 1:
-        EntryListWithBlinking_ReubenPython2and3ClassObject.ExitProgram_Callback()
+        EntryListWithBlinking_Object.ExitProgram_Callback()
     #################################################
 
     #################################################
     if MyPlotterPureTkinterStandAloneProcess_OPEN_FLAG == 1:
-        MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3ClassObject.ExitProgram_Callback()
+        MyPlotterPureTkinterStandAloneProcess_Object.ExitProgram_Callback()
     #################################################
 
-    #################################################
-    #################################################
+    ##########################################################################################################
+    ##########################################################################################################
+    ##########################################################################################################
 
+##########################################################################################################
+##########################################################################################################
 ##########################################################################################################
 ##########################################################################################################

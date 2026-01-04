@@ -12,11 +12,11 @@ www.reubotics.com
 
 Apache 2 License
 
-Software Revision B, 06/15/2025
+Software Revision C, 01/03/2026
 
 Verified working on:
 
-Python 3.11/3.12
+Python 3.11/12/13
 
 Windows  10/11 64-bit
 
@@ -28,12 +28,12 @@ Raspberry Pi Bookworm
 
 ###########################
 
-test_program_for_PeakDetection_ReubenPython3Class.py, ListOfModuleDependencies: ['CSVdataLogger_ReubenPython3Class', 'EntryListWithBlinking_ReubenPython2and3Class', 'keyboard', 'LowPassFilterForDictsOfLists_ReubenPython2and3Class', 'MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3Class', 'MyPrint_ReubenPython2and3Class', 'Phidget22', 'scipy.signal']
+PeakDetection_ReubenPython3Class, ListOfModuleDependencies: []
 
-test_program_for_PeakDetection_ReubenPython3Class.py, ListOfModuleDependencies_TestProgram: []
+PeakDetection_ReubenPython3Class, ListOfModuleDependencies_TestProgram: ['CSVdataLogger_ReubenPython3Class', 'EntryListWithBlinking_ReubenPython2and3Class', 'keyboard', 'LowPassFilterForDictsOfLists_ReubenPython2and3Class', 'MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3Class', 'MyPrint_ReubenPython2and3Class', 'Phidget22', 'ReubenGithubCodeModulePaths', 'scipy.signal']
 
-test_program_for_PeakDetection_ReubenPython3Class.py, ListOfModuleDependencies_NestedLayers: ['EntryListWithBlinking_ReubenPython2and3Class', 'future.builtins', 'numpy', 'pexpect', 'psutil']
+PeakDetection_ReubenPython3Class, ListOfModuleDependencies_NestedLayers: ['EntryListWithBlinking_ReubenPython2and3Class', 'GetCPUandMemoryUsageOfProcessByPID_ReubenPython3Class', 'numpy', 'pexpect', 'psutil', 'pyautogui', 'ReubenGithubCodeModulePaths']
 
-test_program_for_PeakDetection_ReubenPython3Class.py, ListOfModuleDependencies_All:['CSVdataLogger_ReubenPython3Class', 'EntryListWithBlinking_ReubenPython2and3Class', 'future.builtins', 'keyboard', 'LowPassFilterForDictsOfLists_ReubenPython2and3Class', 'MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3Class', 'MyPrint_ReubenPython2and3Class', 'numpy', 'pexpect', 'Phidget22', 'psutil', 'scipy.signal']
+PeakDetection_ReubenPython3Class, ListOfModuleDependencies_All:['CSVdataLogger_ReubenPython3Class', 'EntryListWithBlinking_ReubenPython2and3Class', 'GetCPUandMemoryUsageOfProcessByPID_ReubenPython3Class', 'keyboard', 'LowPassFilterForDictsOfLists_ReubenPython2and3Class', 'MyPlotterPureTkinterStandAloneProcess_ReubenPython2and3Class', 'MyPrint_ReubenPython2and3Class', 'numpy', 'pexpect', 'Phidget22', 'psutil', 'pyautogui', 'ReubenGithubCodeModulePaths', 'scipy.signal']
 
 ###########################
